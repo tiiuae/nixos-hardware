@@ -1,0 +1,54 @@
+''
+CMDLINE "earlycon sbi uio_pdrv_genirq.of_id generic-uio enforcing 0"
+
+NET_VENDOR_CADENCE y
+MACB y
+POLARFIRE_SOC_DMA_NONCOHERENT y
+
+# Always use the built-in CMDLINE string
+#CMDLINE_FORCE y
+CFG80211 y
+MAC80211 y
+MAC80211_MESH y
+WLAN y
+ATH_COMMON y
+WLAN_VENDOR_ATH y
+ATH10K y
+ATH10K_CE y
+ATH10K_PCI y
+ATH10K_DEBUG y
+ATH10K_DFS_CERTIFIED y
+ATH9K_DFS_CERTIFIED y
+ATH10K_SPECTRAL y
+ATH10K_DEBUGFS y
+ATH10K_TRACING y
+
+ATH9K y
+ATH9K_HTC_DEBUGFS y
+ATH9K_DEBUGFS y
+ATH9K_COMMON_SPECTRAL y
+
+MAC80211_MESH y
+MAC80211_DEBUGFS y
+CFG80211_CERTIFICATION_ONUS y
+ATH_REG_DYNAMIC_USER_REG_HINTS y
+ATH_REG_DYNAMIC_USER_CERT_TESTING y
+# In build modules need in build FWs
+#EXTRA_FIRMWARE "ath10k/QCA6174/hw3.0/board-2.bin ath10k/QCA6174/hw3.0/firmware-6.bin ath10k/QCA988X/hw2.0/board.bin ath10k/QCA988X/hw2.0/firmware-4.bin ath10k/QCA988X/hw2.0/firmware-5.bin brcm/brcmfmac43455-sdio.bin brcm/brcmfmac43455-sdio.raspberrypi,4-compute-module.txt regulatory.db regulatory.db.p7s rtl_nic/rtl8153a-3.fw"
+#EXTRA_FIRMWARE_DIR "/usr/src/configs/linux/firmware"
+
+BATMAN_ADV y
+BATMAN_ADV_BATMAN_V y
+BATMAN_ADV_BLA y
+BATMAN_ADV_DAT y
+# BATMAN_ADV_NC is not set
+BATMAN_ADV_MCAST y
+# BATMAN_ADV_DEBUG is not set
+BATMAN_ADV_SYSFS y
+
+# batctl uses debugfs
+DEBUG_FS y
+DEBUG_FS_ALLOW_ALL y
+MTD_SPI_NOR_USE_4K_SECTORS n
+MTD_CMDLINE_PARTS y
+''

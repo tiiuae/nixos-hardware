@@ -174,6 +174,7 @@
       supermicro-x12scz-tln4f = import ./supermicro/x12scz-tln4f;
       system76 = import ./system76;
       system76-darp6 = import ./system76/darp6;
+      tii-tc-saluki = import ./tii/tc-saluki;
       toshiba-swanky = import ./toshiba/swanky;
       tuxedo-infinitybook-v4 = import ./tuxedo/infinitybook/v4;
 
