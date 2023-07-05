@@ -8,13 +8,13 @@ with pkgs; let
 in
 buildUBoot rec {
   pname = "uboot";
-  version = "linux4microchip+fpga-2023.02";
+  version = "linux4microchip+fpga-2023.06";
 
   src = fetchFromGitHub {
     owner = "polarfire-soc";
     repo = "u-boot";
-    rev = "b356a897b11ef19dcbe7870530f23f3a978c1714";
-    sha256 = "sha256-ouNLnDBeEsaY/xr5tAVBUtLlj0eylWbKdlU+bQ2Ciq4=";
+    rev = "7e19f9dff788025403ac6a34d9acf8736eef32ff";
+    sha256 = "sha256-1qmifjjNxPOUWRgZdQk6Ld5KGQk/PypSRK/ILPSsTLs";
   };
 
   extraMakeFlags = [

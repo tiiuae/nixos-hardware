@@ -1,6 +1,8 @@
-From: Ganga Ram <ganga.jaiswal@gmail.com>
-Date: Wed, 05 July 2023 06:15:22 +0400
-Subject: [PATCH] Riscv-Fix-build-against-binutils-2.38
+From 8afd811876b1ce8d6da6d5c804452a2b15805f5a Mon Sep 17 00:00:00 2001
+From: Ganga Ram <Ganga.Ram@tii.ae>
+Date: Wed, 5 Jul 2023 11:32:44 +0400
+Subject: [PATCH] From: Ganga Ram <Ganga.Ram@tii.ae> Date: Wed, 05 July 2023
+ 06:15:22 +0400 Subject: [PATCH] Riscv-Fix-build-against-binutils-2.38
 
 The following description is copied from the equivalent patch for the
 Linux Kernel proposed by Aurelien Jarno:
@@ -17,8 +19,7 @@ arch/riscv/cpu/cpu.c:95: Error: unrecognized opcode `csrw 0x003,0', extension `z
 
 More detail: https://patchwork.ozlabs.org/series/283391/mbox/
 
-Signed-off-by: Ganga Ram <ganga.jaiswal@gmail.com>
-
+Signed-off-by: Ganga Ram <Ganga.Ram@tii.ae>
 ---
  arch/riscv/Makefile | 11 ++++++++++-
  1 file changed, 10 insertions(+), 1 deletion(-)
@@ -28,9 +29,9 @@ index 0b80eb8d86..53d1194ffb 100644
 --- a/arch/riscv/Makefile
 +++ b/arch/riscv/Makefile
 @@ -24,7 +24,16 @@ ifeq ($(CONFIG_CMODEL_MEDANY),y)
-   CMODEL = medany
+ 	CMODEL = medany
  endif
-
+ 
 -ARCH_FLAGS = -march=$(ARCH_BASE)$(ARCH_A)$(ARCH_C) -mabi=$(ABI) \
 +RISCV_MARCH = $(ARCH_BASE)$(ARCH_A)$(ARCH_C)
 +
@@ -42,6 +43,9 @@ index 0b80eb8d86..53d1194ffb 100644
 +endif
 +
 +ARCH_FLAGS = -march=$(RISCV_MARCH) -mabi=$(ABI) \
-        -mcmodel=$(CMODEL)
-
+ 	     -mcmodel=$(CMODEL)
+ 
  PLATFORM_CPPFLAGS	+= $(ARCH_FLAGS)
+-- 
+2.39.2
+
