@@ -21,7 +21,10 @@ buildUBoot rec {
           "OPENSBI=${opensbi}/share/opensbi/lp64/generic/firmware/fw_dynamic.bin"
   ];
 
-  patches = [ ./patches/0001-Boot-environment-for-Microchip-Iciclle-Kit.patch ];
+  patches = [
+    ./patches/0001-Boot-environment-for-Microchip-Iciclle-Kit.patch
+    ./patches/0002-Riscv-Fix-build-against-binutils-2.38.patch
+  ];
   defconfig = "${targetBoard}_defconfig";
   enableParallelBuilding = true;
   extraMeta.platforms = ["riscv64-linux"];
