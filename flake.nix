@@ -144,7 +144,8 @@
       lenovo-thinkpad-z13 = import ./lenovo/thinkpad/z/z13;
       lenovo-yoga-6-13ALC6 = import ./lenovo/yoga/6/13ALC6;
       letsnote-cf-lx4 = import ./panasonic/letsnote/cf-lx4;
-      microchip-icicle-kit = import ./microchip/icicle-kit;
+      #microchip-icicle-kit = import ./microchip/icicle-kit;
+      microchip-icicle-kit = import ./tii/tc-saluki;
       microsoft-surface-go = import ./microsoft/surface/surface-go;
       microsoft-surface-pro-intel = import ./microsoft/surface/surface-pro-intel;
       microsoft-surface-laptop-amd = import ./microsoft/surface/surface-laptop-amd;
@@ -159,7 +160,6 @@
       onenetbook-4 = import ./onenetbook/4;
       pcengines-apu = import ./pcengines/apu;
       pine64-pinebook-pro = import ./pine64/pinebook-pro;
-      polarfire-hardenedos = import ./tii/polarfire;
       purism-librem-13v3 = import ./purism/librem/13v3;
       purism-librem-15v3 = import ./purism/librem/15v3;
       raspberry-pi-2 = import ./raspberry-pi/2;
