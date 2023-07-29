@@ -139,7 +139,7 @@ MODULE_SIG_FORCE y
 MODULE_SIG_ALL y
 MODULE_SIG_SHA512 y
 MODULE_SIG_HASH "sha512"
-##GANGA MODULE_SIG_KEY "certs/signing_key.pem"
+## MODULE_SIG_KEY "certs/signing_key.pem"
 
 ##
 ## kernsec.org KSPP - GCC plugins section
@@ -259,7 +259,7 @@ DEBUG_FS n
 FB n
 
 # Disable virtual terminal to cut access interfaces
-#GANGA VT n
+# VT n
 
 # Disable POSIX asynchronous I/O
 AIO n
