@@ -13,14 +13,13 @@ let
     rev = "004dbcad4c3284d556ab98305a46edcb55a58f4a";
     sha256 = "sha256-+HT99dh4C9ctP1vmObcLBbxrkZVBUWLCV++xAeg2P+I";
   };
- 
+
 in
 buildLinux (args // rec {
   version = "5.15.92-hardened1";
   modDirVersion = version;
 
   nativeBuildInputs = [openssl ssh];
-  buildInputs = [ath10k-firmware];
   defconfig = "mpfs_defconfig";
 
   kernelPatches = [

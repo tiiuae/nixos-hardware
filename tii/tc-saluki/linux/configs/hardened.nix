@@ -187,9 +187,9 @@ SLAB_MERGE_DEFAULT n
 
 # Enable detection of directly indexed out of bounds array accesses for
 # compile time
-UBSAN y
+UBSAN n
 # UBSAN_TRAP is not set
-UBSAN_BOUNDS y
+UBSAN_BOUNDS n
 # UBSAN_MISC is not set
 #TODO: Misaligned address in kernel, temporarily disable address sanitization
 UBSAN_ALIGNMENT n
