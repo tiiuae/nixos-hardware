@@ -1,0 +1,208 @@
+From 00de3cfa7b345ffb5289094adda4292a307caf80 Mon Sep 17 00:00:00 2001
+From: Govind Singh <govind.sk85@gmail.com>
+Date: Thu, 27 Jul 2023 08:53:52 +0400
+Subject: [PATCH] nrc: Add support to enable GIC mapped HSPI_EIRQ
+
+Current implementation of NRC7292 host driver uses
+GPIO IRQ as external interrupt source(HSPI_EIRQ)
+for flow control while communicating via SPI.
+
+This implementation can not be used in some of the
+SOC platforms(ex: polarfire), where GIC/PLIC irq is
+directly mapped to HSPI_EIRQ pin.
+
+To support such designs, add support to map GIC/PLIC
+irq and handle the rx flow control path.
+
+Signed-off-by: Govind Singh <govind@ssrc.tii.ae>
+---
+ drivers/staging/nrc/nrc-hif-cspi.c | 62 ++++++++++++++++++++++++------
+ 1 file changed, 51 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/staging/nrc/nrc-hif-cspi.c b/drivers/staging/nrc/nrc-hif-cspi.c
+index 380b1386daa7..3d14e2f080b5 100644
+--- a/drivers/staging/nrc/nrc-hif-cspi.c
++++ b/drivers/staging/nrc/nrc-hif-cspi.c
+@@ -21,6 +21,9 @@
+ #include <linux/gpio.h>
+ #include <linux/irqreturn.h>
+ #include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/irqdesc.h>
++#include <linux/of_irq.h>
+ #include <net/mac80211.h>
+ #include <asm/unaligned.h>
+ #include <linux/smp.h>
+@@ -81,6 +84,8 @@ static u16 remain_sta=0; /* number of STA remaining after clearing STA */
+ #define CSPI_EIRQ_ENABLE 0x1f /* enable tx/rx que */
+ /*#define CSPI_EIRQ_ENABLE 0x16*/ /* disable tx/rx que */
+ 
++#define GIC_IRQ_SUPPORTED 1
++
+ struct spi_sys_reg {
+ 	u8 wakeup;	/* 0x0 */
+ 	u8 status;	/* 0x1 */
+@@ -1473,11 +1478,35 @@ static int spi_poll_thread (void *data)
+ 	return 0;
+ }
+ 
++#ifdef GIC_IRQ_SUPPORTED
++static int get_gic_irq_id(struct spi_device *spi)
++{
++	struct device_node *spi_master_np = spi->master->dev.of_node;
++	int hspi_eirq;
++
++	// Retrieve GIC HSPI_EIRQ from device tree
++	hspi_eirq = of_irq_get(spi_master_np, 1);
++
++	if (hspi_eirq < 0) {
++		pr_err("Failed to get hspi_eirq\n");
++		return -1;
++	}
++
++	return hspi_eirq;
++}
++#else
++static int get_gic_irq_id(struct spi_device *spi)
++{
++	return gpio_to_irq(spi->irq);
++}
++#endif
++
+ static int spi_start(struct nrc_hif_device *dev)
+ {
+ 	struct nrc_spi_priv *priv = dev->priv;
+ 	struct spi_device *spi = priv->spi;
+ 	struct spi_status_reg *status = &priv->hw.status;
++	int irq;
+ 	int ret;
+ 
+ 	/* Start rx thread */
+@@ -1501,12 +1530,17 @@ static int spi_start(struct nrc_hif_device *dev)
+ 			goto kill_kthread;
+ 		}
+ 	} else if (spi->irq >= 0) {
++
++	irq = get_gic_irq_id(spi);
++	if (irq < 0)
++		goto kill_kthread;
++
+ #ifdef CONFIG_SUPPORT_THREADED_IRQ
+-		ret = request_threaded_irq(gpio_to_irq(spi->irq), NULL, spi_irq,
++		ret = request_threaded_irq(irq, NULL, spi_irq,
+ 				IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+ 				"nrc-spi-irq", dev);
+ #else
+-		ret = request_irq(gpio_to_irq(spi->irq), spi_irq,
++		ret = request_irq(irq, spi_irq,
+ 				IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+ 				"nrc-spi-irq", dev);
+ #endif
+@@ -1562,7 +1596,7 @@ static int spi_suspend(struct nrc_hif_device *dev)
+ 
+ 		if (spi->irq >= 0 && priv->polling_interval <= 0) {
+ 			/* Waits for any pending IRQ handlers for this interrupt to complete */
+-			synchronize_irq(gpio_to_irq(spi->irq));
++			synchronize_irq(get_gic_irq_id(spi));
+ 
+ 			/**
+ 			 * The SPI IRQ will be never disabled because it needs to be asserted
+@@ -1692,7 +1726,7 @@ static int spi_resume(struct nrc_hif_device *dev)
+ 		if (dev->nw->wowlan_enabled && dev->nw->drv_state == NRC_DRV_PS) {
+ 			if (spi->irq >= 0 && priv->polling_interval <= 0) {
+ 				if (atomic_read(&irq_enabled) == 0) {
+-					enable_irq(gpio_to_irq(spi->irq));
++					enable_irq(get_gic_irq_id(spi));
+ 					atomic_set(&irq_enabled, 1);
+ 				}
+ 			}
+@@ -1852,7 +1886,7 @@ static void spi_disable_irq(struct nrc_hif_device *hdev)
+ 	if (spi->irq >= 0) {
+ 		if (priv->polling_interval <= 0) {
+ 			//disable_irq(gpio_to_irq(spi->irq));
+-			disable_irq_nosync(gpio_to_irq(spi->irq));
++			disable_irq_nosync(get_gic_irq_id(spi));
+ 		}
+ 	}
+ }
+@@ -1864,7 +1898,7 @@ static void spi_enable_irq(struct nrc_hif_device *hdev)
+ 
+ 	if (spi->irq >= 0)
+ 		if (priv->polling_interval <= 0)
+-			enable_irq(gpio_to_irq(spi->irq));
++			enable_irq(get_gic_irq_id(spi));
+ }
+ 
+ static int spi_status_irq(struct nrc_hif_device *hdev)
+@@ -1935,7 +1969,7 @@ static int spi_suspend_rx_thread(struct nrc_hif_device *hdev)
+ 
+ 	if (spi->irq >= 0 && priv->polling_interval <= 0) {
+ 		if (atomic_read(&irq_enabled) == 1) {
+-			disable_irq_nosync(gpio_to_irq(spi->irq));
++			disable_irq_nosync(get_gic_irq_id(spi));
+ 			atomic_set(&irq_enabled, 0);
+ 		}
+ 	}
+@@ -1951,7 +1985,7 @@ static int spi_resume_rx_thread(struct nrc_hif_device *hdev)
+ 
+ 	if (spi->irq >= 0 && priv->polling_interval <= 0) {
+ 		if (atomic_read(&irq_enabled) == 0) {
+-			enable_irq(gpio_to_irq(spi->irq));
++			enable_irq(get_gic_irq_id(spi));
+ 			atomic_set(&irq_enabled, 1);
+ 		}
+ 	}
+@@ -2157,6 +2191,7 @@ static int c_spi_probe(struct spi_device *spi)
+ 	c_spi_config(spi);
+ 	spi_set_default_credit(priv);
+ 
++#ifndef GIC_IRQ_SUPPORTED
+ 	if (spi->irq >= 0) {
+ 		/* Claim gpio used for irq */
+ 		if (gpio_request(spi->irq, "nrc-spi-irq") < 0) {
+@@ -2166,6 +2201,7 @@ static int c_spi_probe(struct spi_device *spi)
+ 		}
+ 		gpio_direction_input(spi->irq);
+ 	}
++#endif
+ 
+ #if defined(SPI_DBG)
+ 	/* Claim gpio used for debugging */
+@@ -2199,7 +2235,9 @@ static int c_spi_remove(struct spi_device *spi)
+ 
+ 	if (spi->irq >= 0) {
+ 		//free_irq(gpio_to_irq(spi->irq), hdev);
++#ifndef GIC_IRQ_SUPPORTED
+ 		gpio_free(spi->irq);
++#endif
+ 	}
+ 
+ #if defined(SPI_DBG)
+@@ -2300,19 +2338,21 @@ int nrc_hif_cspi_exit(struct nrc_hif_device *hdev)
+ {
+ 	struct nrc_spi_priv *priv = NULL;
+ 	struct spi_device *spi = NULL;
++	int irq;
+ 
+ 	if (!hdev)
+ 		return 0;
+ 
+ 	priv = hdev->priv;
+ 	spi = priv->spi;
++        irq = get_gic_irq_id(spi);
+ 
+ 	cancel_delayed_work(&priv->work);
+ 
+-	if (spi->irq >= 0) {
++	if (irq >= 0) {
+ 		if (priv->polling_interval <= 0) {
+-			synchronize_irq(gpio_to_irq(spi->irq));
+-			free_irq(gpio_to_irq(spi->irq), hdev);
++			synchronize_irq(irq);
++			free_irq(irq, hdev);
+ 		}
+ 	}
+ 
+-- 
+2.25.1
+
