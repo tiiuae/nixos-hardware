@@ -1,0 +1,42 @@
+From 840512d503f72442527aada1248ff7aa7cb8fb94 Mon Sep 17 00:00:00 2001
+From: Govind Singh <govind.sk85@gmail.com>
+Date: Wed, 10 May 2023 10:03:16 +0400
+Subject: [PATCH 3/3] Fix battery charging current configuration
+
+If charger is connected before device boot, only 500mA
+is used for battery charging when device is started.
+Before device start charging current is normal.
+
+This is due to HW we are using.  Charger detection is not
+triggered by D+/D- lines during boot as those lines are
+connected all the time to charging chip.
+
+Fix is to force D+/D- detection once driver is loaded.
+This is done by writing REG02 bit1 to "1".
+
+Signed-off-by: Mika Joenpera <mika.joenpera@unikie.com>
+Signed-off-by: Govind Singh <govind@ssrc.tii.ae>
+---
+ drivers/power/supply/bq25890_charger.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/power/supply/bq25890_charger.c b/drivers/power/supply/bq25890_charger.c
+index fe814805c68b..71ebfef3b5f3 100644
+--- a/drivers/power/supply/bq25890_charger.c
++++ b/drivers/power/supply/bq25890_charger.c
+@@ -682,6 +682,12 @@ static int bq25890_hw_init(struct bq25890_device *bq)
+ 		}
+ 	}
+ 
++	ret = bq25890_field_write(bq, F_FORCE_DPM, 1);
++	if (ret < 0) {
++		dev_warn(bq->dev, "Force D+/D- detection failed %d\n", ret);
++		/* continue, but charging current is limited */
++	}
++
+ 	/* Configure ADC for continuous conversions when charging */
+ 	ret = bq25890_field_write(bq, F_CONV_RATE, !!bq->state.online);
+ 	if (ret < 0) {
+-- 
+2.25.1
+
