@@ -43,6 +43,4 @@ POWER_RESET_GPIO y
 #Allow user regdb
 ATH_USER_REGD y
 
-# halow SPI radio support
-NRC7292 m
 ''

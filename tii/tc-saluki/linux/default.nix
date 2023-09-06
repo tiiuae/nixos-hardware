@@ -7,6 +7,8 @@ let
   docker = import ./configs/docker.nix;
   mesh = import ./configs/mesh.nix;
   media = import ./configs/media.nix;
+  usb_tethering_device  = import ./configs/usb_tethering_device.nix;
+  comms_io = import ./configs/comms_io.nix;
   inbuilt-fw = fetchFromGitHub {
     owner = "codehub8";
     repo = "tc_firmware";
@@ -62,7 +64,7 @@ buildLinux (args // rec {
   ];
 
   autoModules = false;
-  extraConfig = prune + hardened + docker + mesh + media + nixos +
+  extraConfig = prune + hardened + docker + mesh + media + nixos + comms_io +
   ''
     EXTRA_FIRMWARE ath10k/QCA6174/hw3.0/board-2.bin ath10k/QCA6174/hw3.0/firmware-6.bin ath10k/QCA988X/hw2.0/board.bin ath10k/QCA988X/hw2.0/firmware-4.bin ath10k/QCA988X/hw2.0/firmware-5.bin regulatory.db regulatory.db.p7s
     EXTRA_FIRMWARE_DIR ${inbuilt-fw}
