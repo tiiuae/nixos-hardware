@@ -61,6 +61,10 @@ buildLinux (args // rec {
     name = "user-regdb";
     patch = ./patches/0007-ath-Ignore-regulatory-domain-in-EEPROM.patch;
   }
+  {
+    name = "cm-io-dtsi";
+    patch = ./patches/0010-salukipi-cm-dts-Add-dsti-config-for-CM-IO-board.patch;
+  }
   ];
 
   autoModules = false;
