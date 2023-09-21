@@ -7,6 +7,8 @@ let
   docker = import ./configs/docker.nix;
   mesh = import ./configs/mesh.nix;
   media = import ./configs/media.nix;
+  usb_tethering_device  = import ./configs/usb_tethering_device.nix;
+  comms_io = import ./configs/comms_io.nix;
   inbuilt-fw = fetchFromGitHub {
     owner = "codehub8";
     repo = "tc_firmware";
@@ -23,10 +25,50 @@ buildLinux (args // rec {
   defconfig = "mpfs_defconfig";
 
   kernelPatches = [
+  {
+    name = "emc2301";
+    patch = ./patches/0001-Import-emc2301-fan-driver-into-staging.patch;
+  }
+  {
+    name = "max1726";
+    patch = ./patches/0002-Import-max1726x-gauge-driver-into-staging.patch;
+  }
+  {
+    name = "bq25980";
+    patch = ./patches/0003-Fix-battery-charging-current-configuration.patch;
+  }
+  {
+    name = "ath9k-chbw";
+    patch = ./patches/0004-Add-channelbw-debugfs-support-for-ath9k.patch;
+  }
+  {
+    name = "ath9k-LR";
+    patch = ./patches/0005-Add-ath9k-long-range-tweaks.patch;
+  }
+  {
+    name = "nrc7292";
+    patch = ./patches/0006-Add-Halow-Newracom-driver-to-staging.patch;
+  }
+  {
+    name = "nrc7292-hspi-irq";
+    patch = ./patches/0008-nrc-Add-support-to-enable-GIC-HSPI_EIRQ.patch;
+  }
+  {
+    name = "nrc7292-kbuild";
+    patch = ./patches/0009-Fix-Makefile-for-nrc-driver-build-for-SPI.patch;
+  }
+  {
+    name = "user-regdb";
+    patch = ./patches/0007-ath-Ignore-regulatory-domain-in-EEPROM.patch;
+  }
+  {
+    name = "cm-io-dtsi";
+    patch = ./patches/0010-salukipi-cm-dts-Add-dsti-config-for-CM-IO-board.patch;
+  }
   ];
 
   autoModules = false;
-  extraConfig = prune + hardened + docker + mesh + media + nixos +
+  extraConfig = prune + hardened + docker + mesh + media + nixos + comms_io +
   ''
     EXTRA_FIRMWARE ath10k/QCA6174/hw3.0/board-2.bin ath10k/QCA6174/hw3.0/firmware-6.bin ath10k/QCA988X/hw2.0/board.bin ath10k/QCA988X/hw2.0/firmware-4.bin ath10k/QCA988X/hw2.0/firmware-5.bin regulatory.db regulatory.db.p7s
     EXTRA_FIRMWARE_DIR ${inbuilt-fw}

@@ -1,0 +1,148 @@
+From 32443edfec49be8bb9fe15849d0bdcd6a9e0aeb1 Mon Sep 17 00:00:00 2001
+From: Mika Joenpera <mika.joenpera@unikie.com>
+Date: Mon, 27 Jun 2022 14:58:16 +0300
+Subject: [PATCH 1/3] Add channelbw debugfs support for ath9k
+
+Enables 5MHz and 10MHz bandwidth support.
+
+Signed-off-by: Mika Joenpera <mika.joenpera@unikie.com>
+---
+ drivers/net/wireless/ath/ath.h          |  2 +-
+ drivers/net/wireless/ath/ath9k/common.c | 21 +++++++++--
+ drivers/net/wireless/ath/ath9k/debug.c  | 47 +++++++++++++++++++++++++
+ 3 files changed, 66 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath.h b/drivers/net/wireless/ath/ath.h
+index 7a364eca46d6..ab5f68394df2 100644
+--- a/drivers/net/wireless/ath/ath.h
++++ b/drivers/net/wireless/ath/ath.h
+@@ -149,7 +149,7 @@ struct ath_common {
+ 	int debug_mask;
+ 	enum ath_device_state state;
+ 	unsigned long op_flags;
+-
++	u32 chan_bw;
+ 	struct ath_ani ani;
+ 
+ 	u16 cachelsz;
+diff --git a/drivers/net/wireless/ath/ath9k/common.c b/drivers/net/wireless/ath/ath9k/common.c
+index 099f3d45c594..e4327f481181 100644
+--- a/drivers/net/wireless/ath/ath9k/common.c
++++ b/drivers/net/wireless/ath/ath9k/common.c
+@@ -297,11 +297,13 @@ EXPORT_SYMBOL(ath9k_cmn_get_hw_crypto_keytype);
+ /*
+  * Update internal channel flags.
+  */
+-static void ath9k_cmn_update_ichannel(struct ath9k_channel *ichan,
++static void ath9k_cmn_update_ichannel(struct ath_common *common,
++				      struct ath9k_channel *ichan,
+ 				      struct cfg80211_chan_def *chandef)
+ {
+ 	struct ieee80211_channel *chan = chandef->chan;
+ 	u16 flags = 0;
++        int width;
+ 
+ 	ichan->channel = chan->center_freq;
+ 	ichan->chan = chan;
+@@ -309,7 +311,19 @@ static void ath9k_cmn_update_ichannel(struct ath9k_channel *ichan,
+ 	if (chan->band == NL80211_BAND_5GHZ)
+ 		flags |= CHANNEL_5GHZ;
+ 
+-	switch (chandef->width) {
++	switch (common->chan_bw) {
++	case 5:
++		width = NL80211_CHAN_WIDTH_5;
++		break;
++	case 10:
++		width = NL80211_CHAN_WIDTH_10;
++		break;
++	default:
++		width = chandef->width;
++		break;
++	}
++
++	switch (width) {
+ 	case NL80211_CHAN_WIDTH_5:
+ 		flags |= CHANNEL_QUARTER;
+ 		break;
+@@ -342,10 +356,11 @@ struct ath9k_channel *ath9k_cmn_get_channel(struct ieee80211_hw *hw,
+ 					    struct cfg80211_chan_def *chandef)
+ {
+ 	struct ieee80211_channel *curchan = chandef->chan;
++	struct ath_common *common = ath9k_hw_common(ah);
+ 	struct ath9k_channel *channel;
+ 
+ 	channel = &ah->channels[curchan->hw_value];
+-	ath9k_cmn_update_ichannel(channel, chandef);
++	ath9k_cmn_update_ichannel(common, channel, chandef);
+ 
+ 	return channel;
+ }
+diff --git a/drivers/net/wireless/ath/ath9k/debug.c b/drivers/net/wireless/ath/ath9k/debug.c
+index 26ea51a72156..2ba4d458cfc6 100644
+--- a/drivers/net/wireless/ath/ath9k/debug.c
++++ b/drivers/net/wireless/ath/ath9k/debug.c
+@@ -1356,6 +1356,50 @@ void ath9k_get_et_stats(struct ieee80211_hw *hw,
+ 	WARN_ON(i != ATH9K_SSTATS_LEN);
+ }
+ 
++static ssize_t read_file_chan_bw(struct file *file, char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	char buf[32];
++	unsigned int len;
++
++	len = sprintf(buf, "0x%08x\n", common->chan_bw);
++	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
++}
++
++static ssize_t write_file_chan_bw(struct file *file, const char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	unsigned long chan_bw;
++	char buf[32];
++	ssize_t len;
++
++	len = min(count, sizeof(buf) - 1);
++	if (copy_from_user(buf, user_buf, len))
++		return -EFAULT;
++
++	buf[len] = '\0';
++	if (kstrtoul(buf, 0, &chan_bw))
++		return -EINVAL;
++
++	common->chan_bw = chan_bw;
++	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
++		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
++
++	return count;
++}
++
++static const struct file_operations fops_chanbw = {
++	.read = read_file_chan_bw,
++	.write = write_file_chan_bw,
++	.open = simple_open,
++	.owner = THIS_MODULE,
++	.llseek = default_llseek,
++};
++
+ void ath9k_deinit_debug(struct ath_softc *sc)
+ {
+ 	ath9k_cmn_spectral_deinit_debug(&sc->spec_priv);
+@@ -1380,6 +1424,9 @@ int ath9k_init_debug(struct ath_hw *ah)
+ 	ath9k_tx99_init_debug(sc);
+ 	ath9k_cmn_spectral_init_debug(&sc->spec_priv, sc->debug.debugfs_phy);
+ 
++	debugfs_create_file("chanbw", S_IRUSR | S_IWUSR, sc->debug.debugfs_phy,
++				    sc, &fops_chanbw);
++
+ 	debugfs_create_devm_seqfile(sc->dev, "dma", sc->debug.debugfs_phy,
+ 				    read_file_dma);
+ 	debugfs_create_devm_seqfile(sc->dev, "interrupt", sc->debug.debugfs_phy,
+-- 
+2.25.1
+
